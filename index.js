@@ -19,17 +19,21 @@ mongoose.connect(mongoUrl)
 app.use(cors())
 app.use(express.json())
 
-app.get('/api/blogs', (request, response) => {
+app.get('/', (req, res) => {
+    res.send('Hello world')
+})
+
+app.get('/api/blogs', (req, res) => {
     Blog.find({}).then((blogs) => {
-        response.json(blogs)
+        res.json(blogs)
     })
 })
 
-app.post('/api/blogs', (request, response) => {
-    const blog = new Blog(request.body)
+app.post('/api/blogs', (req, res) => {
+    const blog = new Blog(req.body)
 
     blog.save().then((result) => {
-        response.status(201).json(result)
+        res.status(201).json(result)
     })
 })
 
