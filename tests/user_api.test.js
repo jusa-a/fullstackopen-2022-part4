@@ -1,3 +1,4 @@
+const mongoose = require('mongoose')
 const supertest = require('supertest')
 const helper = require('./test_helper')
 const app = require('../app')
@@ -36,4 +37,72 @@ describe('creating users', () => {
         const usernames = usersAtEnd.map((u) => u.username)
         expect(usernames).toContain(newUser.username)
     })
+
+    test('user is not created if username is not given', async () => {
+        const newUser = {
+            name: 'no username',
+            password: 'nousername',
+        }
+
+        const response = await api.post('/api/users').send(newUser).expect(400)
+
+        expect(response.body.error).toContain(
+            'User validation failed: username: Path `username` is required.'
+        )
+    })
+
+    test('user is not created if username is too short', async () => {
+        const newUser = {
+            username: 'aa',
+            name: 'short username',
+            password: 'shortusername',
+        }
+
+        const response = await api.post('/api/users').send(newUser).expect(400)
+
+        expect(response.body.error).toContain(
+            'User validation failed: username: Path `username` (`aa`) is shorter than the minimum allowed length (3).'
+        )
+    })
+
+    test('user is not created if username is already taken', async () => {
+        const newUser = {
+            username: 'root',
+            name: 'taken username',
+            password: 'takenusername',
+        }
+
+        const response = await api.post('/api/users').send(newUser).expect(400)
+
+        expect(response.body.error).toContain('username must be unique')
+    })
+
+    test('user is not created if password is not given', async () => {
+        const newUser = {
+            username: 'nopassword',
+            name: 'no password',
+        }
+
+        const response = await api.post('/api/users').send(newUser).expect(400)
+
+        expect(response.body.error).toContain('password is missing')
+    })
+
+    test('user is not created if password is too short', async () => {
+        const newUser = {
+            username: 'shortpassword',
+            name: 'short password',
+            password: 'aa',
+        }
+
+        const response = await api.post('/api/users').send(newUser).expect(400)
+
+        expect(response.body.error).toContain(
+            'password must be at leats 3 characters long'
+        )
+    })
+})
+
+afterAll(() => {
+    mongoose.connection.close()
 })
