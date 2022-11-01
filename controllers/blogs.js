@@ -9,8 +9,21 @@ blogsRouter.get('/', async (req, res) => {
 })
 
 blogsRouter.delete('/:id', async (req, res) => {
-    await Blog.findByIdAndRemove(req.params.id)
-    res.status(204).end()
+    const decodedToken = jwt.verify(req.token, process.env.SECRET)
+    if (!decodedToken.id) {
+        return res.status(401).json({ error: 'token missing or invalid' })
+    }
+    const user = await User.findById(decodedToken.id)
+    const blog = await Blog.findById(req.params.id)
+
+    if (blog.user.toString() === user._id.toString()) {
+        await Blog.findByIdAndRemove(req.params.id)
+        user.blogs = user.blogs.filter((b) => b.toString() !== req.params.id)
+        await user.save()
+        return res.status(204).end()
+    }
+
+    return res.status(401).json({ error: 'no permission' })
 })
 
 blogsRouter.post('/', async (req, res) => {
@@ -19,7 +32,7 @@ blogsRouter.post('/', async (req, res) => {
     if (!decodedToken.id) {
         return res.status(401).json({ error: 'token missing or invalid' })
     }
-    const user = await await User.findById(decodedToken.id)
+    const user = await User.findById(decodedToken.id)
 
     const blog = new Blog({
         ...body,
