@@ -13,18 +13,9 @@ blogsRouter.delete('/:id', async (req, res) => {
     res.status(204).end()
 })
 
-const getTokenFrom = (req) => {
-    const authorization = req.get('authorization')
-    if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
-        return authorization.substring(7)
-    }
-    return null
-}
-
 blogsRouter.post('/', async (req, res) => {
     const body = req.body
-    const token = getTokenFrom(req)
-    const decodedToken = jwt.verify(token, process.env.SECRET)
+    const decodedToken = jwt.verify(req.token, process.env.SECRET)
     if (!decodedToken.id) {
         return res.status(401).json({ error: 'token missing or invalid' })
     }
