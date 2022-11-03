@@ -4,15 +4,25 @@ const helper = require('./test_helper')
 const app = require('../app')
 const api = supertest(app)
 
+const User = require('../models/user')
 const Blog = require('../models/blog')
 
+let token = ''
+
 beforeEach(async () => {
+    await User.deleteMany({})
+
+    await api.post('/api/users').send(helper.initialUsers[0])
+    const response = await api.post('/api/login').send(helper.initialUsers[0])
+    token = response.body.token
+
     await Blog.deleteMany({})
-    //await mongoose.connection.dropCollection('blogs')
 
     for (let blog of helper.initialBlogs) {
-        let blogObject = new Blog(blog)
-        await blogObject.save()
+        await api
+            .post('/api/blogs')
+            .set('Authorization', `bearer ${token}`)
+            .send(blog)
     }
 }, 100000)
 
@@ -44,6 +54,7 @@ describe('adding a blog', () => {
 
         await api
             .post('/api/blogs')
+            .set('Authorization', `bearer ${token}`)
             .send(newBlog)
             .expect(201)
             .expect('Content-Type', /application\/json/)
@@ -64,6 +75,7 @@ describe('adding a blog', () => {
 
         await api
             .post('/api/blogs')
+            .set('Authorization', `bearer ${token}`)
             .send(newBlog)
             .expect(201)
             .expect('Content-Type', /application\/json/)
@@ -82,7 +94,11 @@ describe('adding a blog', () => {
             likes: 0,
         }
 
-        await api.post('/api/blogs').send(newBlog).expect(400)
+        await api
+            .post('/api/blogs')
+            .set('Authorization', `bearer ${token}`)
+            .send(newBlog)
+            .expect(400)
 
         const blogsAtEnd = await helper.blogsInDb()
         expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length)
@@ -95,7 +111,24 @@ describe('adding a blog', () => {
             likes: 0,
         }
 
-        await api.post('/api/blogs').send(newBlog).expect(400)
+        await api
+            .post('/api/blogs')
+            .set('Authorization', `bearer ${token}`)
+            .send(newBlog)
+            .expect(400)
+
+        const blogsAtEnd = await helper.blogsInDb()
+        expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length)
+    })
+
+    test('blog is not added if token is not provided', async () => {
+        const newBlog = {
+            title: 'testing blog list',
+            author: 'tester',
+            likes: 0,
+        }
+
+        await api.post('/api/blogs').send(newBlog).expect(401)
 
         const blogsAtEnd = await helper.blogsInDb()
         expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length)
@@ -107,13 +140,45 @@ describe('deleting a blog', () => {
         const blogsAtStart = await helper.blogsInDb()
         const blogToDelete = blogsAtStart[0]
 
-        await api.delete(`/api/blogs/${blogToDelete.id}`).expect(204)
+        await api
+            .delete(`/api/blogs/${blogToDelete.id}`)
+            .set('Authorization', `bearer ${token}`)
+            .expect(204)
 
         const blogsAtEnd = await helper.blogsInDb()
         expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length - 1)
 
         const titles = blogsAtEnd.map((b) => b.title)
         expect(titles).not.toContain(blogToDelete.title)
+    })
+
+    test('blog is not deleted if token is not provided', async () => {
+        const blogsAtStart = await helper.blogsInDb()
+        const blogToDelete = blogsAtStart[0]
+
+        await api.delete(`/api/blogs/${blogToDelete.id}`).expect(401)
+
+        const blogsAtEnd = await helper.blogsInDb()
+        expect(blogsAtEnd).toEqual(blogsAtStart)
+    })
+
+    test('blog is not deleted without correct authorization', async () => {
+        const blogsAtStart = await helper.blogsInDb()
+        const blogToDelete = blogsAtStart[0]
+
+        await api.post('/api/users').send(helper.initialUsers[1])
+        const res = await api.post('/api/login').send(helper.initialUsers[1])
+        token = res.body.token
+
+        const response = await api
+            .delete(`/api/blogs/${blogToDelete.id}`)
+            .set('Authorization', `bearer ${token}`)
+            .expect(401)
+
+        expect(response.body.error).toContain('no permission')
+
+        const blogsAtEnd = await helper.blogsInDb()
+        expect(blogsAtEnd).toEqual(blogsAtStart)
     })
 })
 

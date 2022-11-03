@@ -16,13 +16,23 @@ const initialBlogs = [
     },
 ]
 
-/* const nonExistingId = async () => {
-    const blog = new blog({ADD BLOG CONTENT HERE})
-    await blog.save()
-    await blog.remove()
-
-    return blog._id.toString()
-} */
+const initialUsers = [
+    {
+        username: 'test1',
+        name: 'test1',
+        password: 'test1',
+    },
+    {
+        username: 'test2',
+        name: 'test2',
+        password: 'test2',
+    },
+    {
+        username: 'test3',
+        name: 'test3',
+        password: 'test3',
+    },
+]
 
 const blogsInDb = async () => {
     const blogs = await Blog.find({})
@@ -36,7 +46,7 @@ const usersInDb = async () => {
 
 module.exports = {
     initialBlogs,
-    //nonExistingId,
+    initialUsers,
     blogsInDb,
     usersInDb,
 }
